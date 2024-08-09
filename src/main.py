@@ -96,7 +96,7 @@ class downloader:
 
     def get_creators(self, domain:str):
         # get site creators
-        creators_api = f"https://{domain}/api/creators/"
+        creators_api = f"https://{domain}/api/v1/creators/"
         logger.debug(f"Getting creator json from {creators_api}")
         return self.session.get(url=creators_api, cookies=self.cookies, headers=self.headers, timeout=self.timeout).json()
 
@@ -126,11 +126,11 @@ class downloader:
                 self.get_post(f"https://{domain}/{favorite['service']}/user/{favorite['id']}")
 
     def get_post(self, url:str):
-        found = re.search(r'(https://(kemono\.party|coomer\.party)/)(([^/]+)/user/([^/]+)($|/post/[^/]+))', url)
+        found = re.search(r'(https:\/\/(kemono\.su|coomer\.su)\/)(([^\/]+)\/user\/([^\/]+)($|\/post\/[^\/]+))', url)
         if not found:
             logger.error(f"Unable to find url parameters for {url}")
             return
-        api = f"{found.group(1)}api/{found.group(3)}"
+        api = f"{found.group(1)}api/v1/{found.group(3)}"
         site = found.group(2)
         service = found.group(4)
         user_id = found.group(5)
@@ -160,6 +160,7 @@ class downloader:
                 return # completed
             for post in json:
                 post = self.clean_post(post, user, site)
+
                 # only download once
                 if not is_post and first:
                     self.download_icon_banner(post, self.icon_banner)
@@ -176,9 +177,9 @@ class downloader:
                 except:
                     logger.exception("Unable to download post | service:{service} user_id:{user_id} post_id:{id}".format(**post['post_variables']))
                 self.comp_posts.append("https://{site}/{service}/user/{user_id}/post/{id}".format(**post['post_variables']))
-            if len(json) < 25:
+            if len(json) < 50:
                 return # completed
-            chunk += 25
+            chunk += 50
 
 
     def download_icon_banner(self, post:dict, img_types:list):
@@ -284,19 +285,25 @@ class downloader:
 
     def clean_post(self, post:dict, user:dict, domain:str):
         new_post = {}
+
         # set post variables
         new_post['post_variables'] = {}
-        new_post['post_variables']['title'] = post['title']
+        new_post['post_variables']['title'] = ''
+        if post['title']:
+            new_post['post_variables']['title'] = post['title']
+        else:
+            new_post['post_variables']['title'] = re.sub(r'[:"?/\*|<>]', '_', post['content'][:150])
         new_post['post_variables']['id'] = post['id']
         new_post['post_variables']['user_id'] = post['user']
         new_post['post_variables']['username'] = user['name']
         new_post['post_variables']['site'] = domain
-        new_post['post_variables']['service'] = post['service']
-        new_post['post_variables']['added'] = datetime.datetime.strptime(post['added'], r'%a, %d %b %Y %H:%M:%S %Z').strftime(self.date_strf_pattern) if post['added'] else None
-        new_post['post_variables']['updated'] = datetime.datetime.strptime(post['edited'], r'%a, %d %b %Y %H:%M:%S %Z').strftime(self.date_strf_pattern) if post['edited'] else None
-        new_post['post_variables']['user_updated'] = datetime.datetime.strptime(user['updated'], r'%a, %d %b %Y %H:%M:%S %Z').strftime(self.date_strf_pattern) if user['updated'] else None
-        new_post['post_variables']['published'] = datetime.datetime.strptime(post['published'], r'%a, %d %b %Y %H:%M:%S %Z').strftime(self.date_strf_pattern) if post['published'] else None
+        new_post['post_variables']['service'] = post['service']      
+        new_post['post_variables']['added'] = datetime.datetime.strptime(post['added'], '%Y-%m-%dT%H:%M:%S.%f').strftime(self.date_strf_pattern) if post['added'] else None
+        new_post['post_variables']['updated'] = datetime.datetime.strptime(post['edited'], '%Y-%m-%dT%H:%M:%S').strftime(self.date_strf_pattern) if post['edited'] else None
+        new_post['post_variables']['user_updated'] = None
+        new_post['post_variables']['published'] = datetime.datetime.strptime(post['published'], '%Y-%m-%dT%H:%M:%S').strftime(self.date_strf_pattern) if post['published'] else None
 
+        
         new_post['post_path'] = compile_post_path(new_post['post_variables'], self.download_path_template, self.restrict_ascii)
 
         new_post['attachments'] = []
