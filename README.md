@@ -1,5 +1,4 @@
 fixed to work with kemono.su/coomer.su domain and api changes
-#########
 
 # kemono-dl
 A downloader tool for kemono.party and coomer.party.
