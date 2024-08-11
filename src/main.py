@@ -107,7 +107,7 @@ class downloader:
         return None
 
     def get_favorites(self, domain:str, fav_type:str, services:list = None):
-        fav_api = f'https://{domain}/api/favorites?type={fav_type}'
+        fav_api = f'https://{domain}/api/v1/favorites?type={fav_type}'
         logger.debug(f"Getting favorite json from {fav_api}")
         response = self.session.get(url=fav_api, headers=self.headers, cookies=self.cookies, timeout=self.timeout)
         if response.status_code == 401:
@@ -126,7 +126,7 @@ class downloader:
                 self.get_post(f"https://{domain}/{favorite['service']}/user/{favorite['id']}")
 
     def get_post(self, url:str):
-        found = re.search(r'(https:\/\/(kemono\.su|coomer\.su)\/)(([^\/]+)\/user\/([^\/]+)($|\/post\/[^\/]+))', url)
+        found = re.search(r'(https:\/\/((?:kemono|coomer)\.(?:su|party))\/)(([^\/]+)\/user\/([^\/]+)($|\/post\/[^\/]+))', url)
         if not found:
             logger.error(f"Unable to find url parameters for {url}")
             return
@@ -142,7 +142,7 @@ class downloader:
         if not is_post:
             if self.skip_user(user):
                 return
-        logger.info(f"Downloading posts from {site}.party | {service} | {user['name']} | {user['id']}")
+        logger.info(f"Downloading posts from {site}.su | {service} | {user['name']} | {user['id']}")
         chunk = 0
         first = True
         while True:
@@ -158,6 +158,10 @@ class downloader:
                 elif chunk == 0:
                     logger.error(f"Unable to find user json for {api}?o={chunk}")
                 return # completed
+            if isinstance(json, dict):
+                json_tmp = json
+                json = []
+                json.append(json_tmp)
             for post in json:
                 post = self.clean_post(post, user, site)
 
@@ -266,7 +270,7 @@ class downloader:
             response = self.session.get(url=post_url, allow_redirects=True, headers=self.headers, cookies=self.cookies, timeout=self.timeout)
             page_soup = BeautifulSoup(response.text, 'html.parser')
             comment_soup = page_soup.find("div", {"class": "post__comments"})
-            no_comments = re.search('([^ ]+ does not support comment scraping yet\.|No comments found for this post\.)',comment_soup.text)
+            no_comments = re.search(r'([^ ]+ does not support comment scraping yet\.|No comments found for this post\.)',comment_soup.text)
             if no_comments:
                 logger.debug(no_comments.group(1).strip())
                 return ''
@@ -289,7 +293,7 @@ class downloader:
         # set post variables
         new_post['post_variables'] = {}
         new_post['post_variables']['title'] = ''
-        if post['title']:
+        if post:
             new_post['post_variables']['title'] = post['title']
         else:
             new_post['post_variables']['title'] = re.sub(r'[:"?/\*|<>]', '_', post['content'][:150])
