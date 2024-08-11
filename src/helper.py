@@ -5,7 +5,7 @@ import time
 
 def parse_url(url):
     # parse urls
-    downloadable = re.search(r'^https:\/\/(kemono\.su|coomer\.su)\/([^\/]+)\/user\/([^\/]+)($|\/post\/([^\/]+)$)',url)
+    downloadable = re.search(r'^https:\/\/((?:kemono|coomer)\.(?:su|party))\/([^\/]+)\/user\/([^\/]+)($|\/post\/([^\/]+)$)',url)
     if not downloadable:
         return None
     return downloadable.group(1)
@@ -142,3 +142,4 @@ def print_download_bar(total:int, downloaded:int, resumed:int, start):
 #     if current_version < latest_version:
 #         logger.debug(f"Using kemono-dl {__version__} while latest release is kemono-dl {latest_tag}")
 #         logger.warning(f"A newer version of kemono-dl is available. Please update to the latest release at https://github.com/AplhaSlayer1964/kemono-dl/releases/latest")
+
